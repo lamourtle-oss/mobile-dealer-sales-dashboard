@@ -20,6 +20,15 @@ const statusBadgeHtml = s => {
   const cls = s === 'CLOSED' ? 'status-CLOSED' : s === 'INACTIVE' ? 'status-INACTIVE' : 'status-none';
   return `<span class="status-badge ${cls}">${s}</span>`;
 };
+const escapeAttr = s => (s || '').replace(/"/g, '&quot;');
+const verifyBadgeHtml = (status, note) => {
+  if (!status) return '<span class="verify-na">-</span>';
+  const title = note ? ` title="${escapeAttr(note)}"` : '';
+  if (status === 'พบตัวตนออนไลน์') return `<span class="verify-badge verify-found"${title}>✅ พบตัวตนออนไลน์</span>`;
+  if (status.indexOf('ปิดกิจการ') !== -1) return `<span class="verify-badge verify-closed"${title}>⛔ ยืนยันปิดกิจการ</span>`;
+  if (status.indexOf('N/A') !== -1 || status.indexOf('ไม่มีชื่อร้าน') !== -1 || status.indexOf('Temp SN') !== -1) return '<span class="verify-na">N/A</span>';
+  return `<span class="verify-badge verify-notfound"${title}>ไม่พบ/ไม่ชัดเจน</span>`;
+};
 
 let DATA = {};
 
@@ -148,14 +157,14 @@ function setupDownloadButtons() {
   });
 
   document.getElementById('dlDealerTable').addEventListener('click', () => {
-    const headers = ['Dealer Code', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'สาขาหลัก', 'ภาค', 'จำนวนสาขาที่ขาย', 'ยอดขายรวม (บาท)', 'จำนวนรวม (หน่วย)', 'จำนวนบิล', 'เดือนที่ขาย (/15)', '% ยกเลิก', '% ค้างชำระ', 'Risk Score', 'สถานะความน่าเชื่อถือ', 'ประเภท'];
-    const keys = ['dealer_code', 'shop_name', 'dealer_status', 'primary_branch', 'region', 'n_branches', 'total_sales', 'total_qty', 'txn', 'n_months', 'cancel_rate', 'overdue_rate', 'risk_score', 'reliability_tier', 'tenure_label'];
+    const headers = ['Dealer Code', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'สาขาหลัก', 'ภาค', 'จำนวนสาขาที่ขาย', 'ยอดขายรวม (บาท)', 'จำนวนรวม (หน่วย)', 'จำนวนบิล', 'เดือนที่ขาย (/15)', '% ยกเลิก', '% ค้างชำระ', 'Risk Score', 'สถานะความน่าเชื่อถือ', 'ประเภท', 'ผลตรวจสอบ Google/Facebook', 'หมายเหตุการตรวจสอบ'];
+    const keys = ['dealer_code', 'shop_name', 'dealer_status', 'primary_branch', 'region', 'n_branches', 'total_sales', 'total_qty', 'txn', 'n_months', 'cancel_rate', 'overdue_rate', 'risk_score', 'reliability_tier', 'tenure_label', 'verify_status', 'verify_note'];
     downloadCSV(`dealer_profile_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.dealerTable));
   });
 
   document.getElementById('dlWatchTable').addEventListener('click', () => {
-    const headers = ['สาขา', 'ภาค', 'เดือน', 'Direct Sale (บาท)', 'Mobile Dealer รวม (บาท)', 'Dealer เด่นสุดในเดือนนั้น', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'ยอดขาย Dealer นี้ (บาท)', 'Risk Score', 'สถานะ'];
-    const keys = ['branch', 'region', 'year_month', 'direct_sales', 'dealer_sales', 'dealer_code', 'shop_name', 'dealer_status', 'dealer_sales_this_month', 'dealer_risk_score', 'dealer_tier'];
+    const headers = ['สาขา', 'ภาค', 'เดือน', 'Direct Sale (บาท)', 'Mobile Dealer รวม (บาท)', 'Dealer เด่นสุดในเดือนนั้น', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'ยอดขาย Dealer นี้ (บาท)', 'Risk Score', 'สถานะ', 'ผลตรวจสอบ Google/Facebook', 'หมายเหตุการตรวจสอบ'];
+    const keys = ['branch', 'region', 'year_month', 'direct_sales', 'dealer_sales', 'dealer_code', 'shop_name', 'dealer_status', 'dealer_sales_this_month', 'dealer_risk_score', 'dealer_tier', 'verify_status', 'verify_note'];
     downloadCSV(`watchlist_anomaly_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.watchTable));
   });
 }
@@ -184,6 +193,7 @@ function renderKpi() {
     { label: 'Dealer กลุ่ม High Risk', value: fmtNum(DATA.dealer_profile.filter(d => d.reliability_tier === 'High Risk').length) + ' ราย', sub: 'ควรตรวจสอบหน้าร้าน/ตัวตน' },
     { label: 'รายการยอดขายผิดปกติ', value: fmtNum(DATA.watchlist.length) + ' รายการ', sub: 'Direct ต่ำ + Dealer สูง + เสี่ยง' },
     { label: 'ร้านสถานะ CLOSED (ทางการ)', value: fmtNum(DATA.dealer_profile.filter(d => d.dealer_status === 'CLOSED').length) + ' ราย', sub: 'จากฐานข้อมูล MT_DEALER' },
+    { label: 'พบตัวตนออนไลน์ (FB/Google)', value: fmtNum(DATA.dealer_profile.filter(d => d.verify_status === 'พบตัวตนออนไลน์').length) + ' ราย', sub: 'เฉพาะกลุ่ม Watch + High Risk' },
   ];
   document.getElementById('kpiRow').innerHTML = cards.map(c => `
     <div class="kpi-card">
@@ -332,13 +342,17 @@ function renderDealerTable() {
       <td class="right">${r.risk_score}</td>
       <td><span class="tier-badge ${tierClass(r.reliability_tier)}">${tierEmoji(r.reliability_tier)} ${r.reliability_tier}</span></td>
       <td><span class="tenure-badge">${r.tenure_label}</span></td>
+      <td>${verifyBadgeHtml(r.verify_status, r.verify_note)}</td>
     </tr>`).join('');
 }
 
 function renderWatchTable() {
   let rows = DATA.watchlist.map(r => {
     const d = DATA.dealerMap[r.dealer_code] || {};
-    return Object.assign({}, r, { shop_name: d.shop_name || null, dealer_status: d.dealer_status || '' });
+    return Object.assign({}, r, {
+      shop_name: d.shop_name || null, dealer_status: d.dealer_status || '',
+      verify_status: d.verify_status || '', verify_note: d.verify_note || ''
+    });
   });
   if (state.branch) rows = rows.filter(r => r.branch === state.branch);
   if (state.region) rows = rows.filter(r => r.region === state.region);
@@ -363,6 +377,7 @@ function renderWatchTable() {
       <td class="right">${fmtMoney(r.dealer_sales_this_month)}</td>
       <td class="right">${r.dealer_risk_score}</td>
       <td><span class="tier-badge ${tierClass(r.dealer_tier)}">${tierEmoji(r.dealer_tier)} ${r.dealer_tier}</span></td>
+      <td>${verifyBadgeHtml(r.verify_status, r.verify_note)}</td>
     </tr>`).join('');
 }
 

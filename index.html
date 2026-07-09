@@ -106,6 +106,7 @@
       ชื่อร้าน Dealer จับคู่จากทะเบียนสมัคร Dealer (Dealer Mobile.xlsx), ไฟล์ยืมสต๊อก (DealerBorrow) และฐานข้อมูลร้านค้า (MT_DEALER) — ครอบคลุม 99.2% ของ Dealer ทั้งหมด
       คอลัมน์ <b>สถานะร้าน</b> คือสถานะทางการจาก MT_DEALER (เช่น CLOSED = ปิดกิจการแล้ว) ส่วนคะแนน <b>ความน่าเชื่อถือ</b> คำนวณจากสัญญาณภายในระบบขาย ได้แก่ อัตรายกเลิกรายการ (cancel rate), อัตราค้างชำระ/เกินกำหนด (overdue),
       และอัตรา Gross Margin ติดลบ — ยิ่งคะแนนสูง ยิ่งมีความเสี่ยง ควรให้ทีมตรวจสอบเพิ่มเติมเป็นรายกรณี (หมายเหตุ: สถานะร้าน CLOSED บางรายยังไม่สะท้อนในคะแนนความเสี่ยงนี้ เพราะคำนวณจากพฤติกรรมการขาย ไม่ใช่สถานะร้าน)
+      <br>คอลัมน์ <b>ผลตรวจสอบ Google/Facebook</b> คือผลค้นหาตัวตนร้านทางออนไลน์ สำหรับกลุ่ม Watch และ High Risk เท่านั้น — "ไม่พบ/ไม่ชัดเจน" ไม่ได้แปลว่าร้านไม่มีจริง (ร้านรายย่อยจำนวนมากไม่มีเพจ) ควรใช้เป็นข้อมูลเสริมร่วมกับสถานะร้านและ Risk Score เท่านั้น
     </div>
     <div class="table-wrap" style="margin-top:10px;">
       <table id="dealerTable">
@@ -126,6 +127,7 @@
             <th data-key="risk_score" class="right">Risk Score</th>
             <th data-key="reliability_tier">สถานะความน่าเชื่อถือ</th>
             <th data-key="tenure_label">ประเภท</th>
+            <th data-key="verify_status">ผลตรวจสอบ Google/Facebook</th>
           </tr>
         </thead>
         <tbody id="dealerTableBody"></tbody>
@@ -161,6 +163,7 @@
             <th data-key="dealer_sales_this_month" class="right">ยอดขาย Dealer นี้ (บาท)</th>
             <th data-key="dealer_risk_score" class="right">Risk Score</th>
             <th data-key="dealer_tier">สถานะ</th>
+            <th data-key="verify_status">ผลตรวจสอบ Google/Facebook</th>
           </tr>
         </thead>
         <tbody id="watchTableBody"></tbody>

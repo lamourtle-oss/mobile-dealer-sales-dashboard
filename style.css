@@ -225,6 +225,19 @@ canvas { max-width: 100%; }
 
 .shop-name-na { color: var(--text-dim); font-style: italic; }
 
+.verify-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: normal;
+}
+.verify-found { background: rgba(51,195,124,.18); color: var(--green); }
+.verify-notfound { background: rgba(154,165,192,.15); color: var(--text-dim); }
+.verify-closed { background: var(--red); color: #fff; }
+.verify-na { color: var(--text-dim); font-style: italic; font-size: 11.5px; }
+
 table {
   width: 100%;
   border-collapse: collapse;
