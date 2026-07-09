@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Dealer Sales Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <h1>📊 Mobile Dealer Sales Dashboard</h1>
+    <div class="subtitle">ยอดขายรายสาขา / Mobile Dealer / เดือน · พร้อมคะแนนความน่าเชื่อถือและรายการยอดขายผิดปกติ</div>
+  </div>
+  <div class="meta" id="lastUpdated"></div>
+</header>
+
+<main>
+
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>ภาค / โซน (Region)</label>
+      <select id="regionFilter"><option value="">ทุกภาค</option></select>
+    </div>
+    <div class="filter-group">
+      <label>สาขา (Branch)</label>
+      <select id="branchFilter"><option value="">ทุกสาขา</option></select>
+    </div>
+    <div class="filter-group">
+      <label>เดือน (Month)</label>
+      <select id="monthFilter"><option value="">ทุกเดือน</option></select>
+    </div>
+    <div class="filter-group">
+      <label>ค้นหา Dealer Code</label>
+      <input type="search" id="dealerSearch" placeholder="เช่น SR100511">
+    </div>
+    <div class="filter-group">
+      <label>สถานะความน่าเชื่อถือ (หน้าร้าน/ตัวตน)</label>
+      <div class="chip-group" id="tierChips">
+        <span class="chip" data-tier="all" data-active="1">ทั้งหมด</span>
+        <span class="chip" data-tier="Reliable" data-active="0">🟢 Reliable</span>
+        <span class="chip" data-tier="Watch" data-active="0">🟡 Watch</span>
+        <span class="chip" data-tier="High Risk" data-active="0">🔴 High Risk</span>
+      </div>
+    </div>
+    <button class="reset-btn" id="resetFilters">↺ ล้างตัวกรอง</button>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <h2>ยอดขายรายเดือน แยกตามช่องทาง</h2>
+      <div class="panel-sub">Direct sale vs Mobile Dealer vs Online — ยอดขาย (บาท)</div>
+      <canvas id="channelTrendChart" height="130"></canvas>
+    </div>
+    <div class="panel">
+      <h2>จำนวนที่ขายได้ต่อเดือน (หน่วย)</h2>
+      <div class="panel-sub">รวมทุกช่องทาง ตามตัวกรองด้านบน</div>
+      <canvas id="qtyChart" height="130"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>1) ยอดขายรายสาขา × Mobile Dealer × เดือน</h2>
+    <div class="title-actions">
+      <span class="count-pill" id="branchTableCount"></span>
+      <button class="dl-btn" id="dlBranchTable">⬇ ดาวน์โหลด CSV</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="hint">คลิกหัวคอลัมน์เพื่อเรียงลำดับ · ใช้ตัวกรองสาขา/เดือนด้านบนเพื่อจำกัดผลลัพธ์</div>
+    <div class="table-wrap" style="margin-top:10px;">
+      <table id="branchTable">
+        <thead>
+          <tr>
+            <th data-key="branch">สาขา</th>
+            <th data-key="region">ภาค</th>
+            <th data-key="year_month">เดือน</th>
+            <th data-key="dealer_code">Dealer Code</th>
+            <th data-key="sales" class="right">ยอดขาย (บาท)</th>
+            <th data-key="qty" class="right">จำนวน (หน่วย)</th>
+            <th data-key="txn" class="right">จำนวนบิล</th>
+            <th data-key="reliability_tier">สถานะ</th>
+            <th data-key="tenure_label">ประเภท Dealer</th>
+          </tr>
+        </thead>
+        <tbody id="branchTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>2 &amp; 3) Mobile Dealer แต่ละราย — ความน่าเชื่อถือ &amp; ผลการขาย</h2>
+    <div class="title-actions">
+      <span class="count-pill" id="dealerTableCount"></span>
+      <button class="dl-btn" id="dlDealerTable">⬇ ดาวน์โหลด CSV</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="hint">
+      ⚠️ ข้อมูลที่อัปโหลดไม่มีชื่อร้าน/ที่อยู่จริงของ Mobile Dealer (มีแค่รหัส เช่น SR100511) จึงไม่สามารถค้นหน้าร้านจริงบนอินเทอร์เน็ตได้โดยตรง
+      คะแนน <b>ความน่าเชื่อถือ</b> ด้านล่างจึงคำนวณจากสัญญาณภายในระบบแทน ได้แก่ อัตรายกเลิกรายการ (cancel rate), อัตราค้างชำระ/เกินกำหนด (overdue),
+      และอัตรา Gross Margin ติดลบ — ยิ่งคะแนนสูง ยิ่งมีความเสี่ยง/น่าสงสัยว่าอาจไม่มีหน้าร้านที่มั่นคง ควรให้ทีมตรวจสอบเพิ่มเติมเป็นรายกรณี
+    </div>
+    <div class="table-wrap" style="margin-top:10px;">
+      <table id="dealerTable">
+        <thead>
+          <tr>
+            <th data-key="dealer_code">Dealer Code</th>
+            <th data-key="primary_branch">สาขาหลัก</th>
+            <th data-key="region">ภาค</th>
+            <th data-key="n_branches" class="right">จำนวนสาขาที่ขาย</th>
+            <th data-key="total_sales" class="right">ยอดขายรวม (บาท)</th>
+            <th data-key="total_qty" class="right">จำนวนรวม (หน่วย)</th>
+            <th data-key="txn" class="right">จำนวนบิล</th>
+            <th data-key="n_months" class="right">เดือนที่ขาย (/15)</th>
+            <th data-key="cancel_rate" class="right">% ยกเลิก</th>
+            <th data-key="overdue_rate" class="right">% ค้างชำระ</th>
+            <th data-key="risk_score" class="right">Risk Score</th>
+            <th data-key="reliability_tier">สถานะความน่าเชื่อถือ</th>
+            <th data-key="tenure_label">ประเภท</th>
+          </tr>
+        </thead>
+        <tbody id="dealerTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>🚩 ยอดขายผิดปกติ (Watchlist)</h2>
+    <div class="title-actions">
+      <span class="count-pill" id="watchlistCount"></span>
+      <button class="dl-btn" id="dlWatchTable">⬇ ดาวน์โหลด CSV</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="hint">
+      เงื่อนไขที่ใช้ตรวจจับ: (ก) เดือน/สาขานั้น <b>Direct sale ขายน้อย</b> แต่ <b>Mobile Dealer ขายเยอะกว่ามาก</b> (หรือ Direct = 0)
+      และ (ข) เป็น dealer ที่เป็น <b>"เดิม" (Existing)</b> ซึ่งขายต่อเนื่องมานาน ไม่ใช่ dealer ใหม่
+      และ (ค) dealer รายนั้นอยู่ในกลุ่ม <b>Watch หรือ High Risk</b> (ไม่ใช่ Reliable) — ตรงตามเงื่อนไขข้อ 5.3 ที่ขอ ควรให้ทีมตรวจสอบก่อนอนุมัติ/ต่อสัญญา
+    </div>
+    <div class="table-wrap" style="margin-top:10px;">
+      <table id="watchTable">
+        <thead>
+          <tr>
+            <th data-key="branch">สาขา</th>
+            <th data-key="region">ภาค</th>
+            <th data-key="year_month">เดือน</th>
+            <th data-key="direct_sales" class="right">Direct Sale (บาท)</th>
+            <th data-key="dealer_sales" class="right">Mobile Dealer รวม (บาท)</th>
+            <th data-key="dealer_code">Dealer เด่นสุดในเดือนนั้น</th>
+            <th data-key="dealer_sales_this_month" class="right">ยอดขาย Dealer นี้ (บาท)</th>
+            <th data-key="dealer_risk_score" class="right">Risk Score</th>
+            <th data-key="dealer_tier">สถานะ</th>
+          </tr>
+        </thead>
+        <tbody id="watchTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Generated from "DB Sale.xlsx" · ข้อมูลครอบคลุม 15 เดือน (ม.ค. 2025 – มี.ค. 2026) · Static dashboard, deployed via GitHub Pages
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
