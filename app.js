@@ -17,6 +17,11 @@ const tierEmoji = t => t === 'Reliable' ? '🟢' : t === 'Watch' ? '🟡' : t ==
 
 let DATA = {};
 
+// full (unsliced) filtered row sets, kept in sync by each render*Table() call so
+// the download buttons can export everything currently matching the filters,
+// not just the rows visible in the (capped) on-screen table.
+const lastRows = { branchTable: [], dealerTable: [], watchTable: [] };
+
 async function loadAll() {
   const files = ['branch_month_type', 'branch_month_dealer', 'dealer_profile', 'watchlist', 'months', 'month_overview', 'kpi'];
   const results = await Promise.all(files.map(f => fetch('data/' + f + '.json').then(r => r.json())));
@@ -92,8 +97,61 @@ function populateFilters() {
     });
   });
 
+  setupDownloadButtons();
+
   const lu = new Date().toISOString().slice(0, 10);
   document.getElementById('lastUpdated').textContent = 'ข้อมูลถึง มี.ค. 2026 · สร้างแดชบอร์ด ' + lu;
+}
+
+// ---------------- CSV export ----------------
+
+function csvEscape(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function toCSV(headers, keys, rows) {
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(r => lines.push(keys.map(k => csvEscape(r[k])).join(',')));
+  // BOM so Excel opens Thai text as UTF-8 correctly
+  return '﻿' + lines.join('\r\n');
+}
+
+function downloadCSV(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function todayStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function setupDownloadButtons() {
+  document.getElementById('dlBranchTable').addEventListener('click', () => {
+    const headers = ['สาขา', 'ภาค', 'เดือน', 'Dealer Code', 'ยอดขาย (บาท)', 'จำนวน (หน่วย)', 'จำนวนบิล', 'สถานะความน่าเชื่อถือ', 'ประเภท Dealer'];
+    const keys = ['branch', 'region', 'year_month', 'dealer_code', 'sales', 'qty', 'txn', 'reliability_tier', 'tenure_label'];
+    downloadCSV(`branch_dealer_month_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.branchTable));
+  });
+
+  document.getElementById('dlDealerTable').addEventListener('click', () => {
+    const headers = ['Dealer Code', 'สาขาหลัก', 'ภาค', 'จำนวนสาขาที่ขาย', 'ยอดขายรวม (บาท)', 'จำนวนรวม (หน่วย)', 'จำนวนบิล', 'เดือนที่ขาย (/15)', '% ยกเลิก', '% ค้างชำระ', 'Risk Score', 'สถานะความน่าเชื่อถือ', 'ประเภท'];
+    const keys = ['dealer_code', 'primary_branch', 'region', 'n_branches', 'total_sales', 'total_qty', 'txn', 'n_months', 'cancel_rate', 'overdue_rate', 'risk_score', 'reliability_tier', 'tenure_label'];
+    downloadCSV(`dealer_profile_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.dealerTable));
+  });
+
+  document.getElementById('dlWatchTable').addEventListener('click', () => {
+    const headers = ['สาขา', 'ภาค', 'เดือน', 'Direct Sale (บาท)', 'Mobile Dealer รวม (บาท)', 'Dealer เด่นสุดในเดือนนั้น', 'ยอดขาย Dealer นี้ (บาท)', 'Risk Score', 'สถานะ'];
+    const keys = ['branch', 'region', 'year_month', 'direct_sales', 'dealer_sales', 'dealer_code', 'dealer_sales_this_month', 'dealer_risk_score', 'dealer_tier'];
+    downloadCSV(`watchlist_anomaly_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.watchTable));
+  });
 }
 
 function sortRows(rows, tableId, defaultKey, defaultDir) {
@@ -214,6 +272,7 @@ function renderBranchTable() {
   if (state.tier !== 'all') rows = rows.filter(r => r.reliability_tier === state.tier);
 
   rows = sortRows(rows, 'branchTable', 'sales', 'desc');
+  lastRows.branchTable = rows;
   document.getElementById('branchTableCount').textContent = rows.length.toLocaleString() + ' แถว';
 
   const MAX = 500;
@@ -241,6 +300,7 @@ function renderDealerTable() {
   if (state.month) rows = rows.filter(r => r.first_month <= state.month && r.last_month >= state.month);
 
   rows = sortRows(rows, 'dealerTable', 'total_sales', 'desc');
+  lastRows.dealerTable = rows;
   document.getElementById('dealerTableCount').textContent = rows.length.toLocaleString() + ' dealer';
 
   const MAX = 500;
@@ -272,6 +332,7 @@ function renderWatchTable() {
   if (state.tier !== 'all') rows = rows.filter(r => r.dealer_tier === state.tier);
 
   rows = sortRows(rows, 'watchTable', 'dealer_sales', 'desc');
+  lastRows.watchTable = rows;
   document.getElementById('watchlistCount').textContent = rows.length.toLocaleString() + ' รายการ';
 
   document.getElementById('watchTableBody').innerHTML = rows.map(r => `
