@@ -23,6 +23,10 @@
 
   <div class="filters">
     <div class="filter-group">
+      <label>ภาค / โซน (Region)</label>
+      <select id="regionFilter"><option value="">ทุกภาค</option></select>
+    </div>
+    <div class="filter-group">
       <label>สาขา (Branch)</label>
       <select id="branchFilter"><option value="">ทุกสาขา</option></select>
     </div>
@@ -101,6 +105,7 @@
           <tr>
             <th data-key="dealer_code">Dealer Code</th>
             <th data-key="primary_branch">สาขาหลัก</th>
+            <th data-key="region">ภาค</th>
             <th data-key="n_branches" class="right">จำนวนสาขาที่ขาย</th>
             <th data-key="total_sales" class="right">ยอดขายรวม (บาท)</th>
             <th data-key="total_qty" class="right">จำนวนรวม (หน่วย)</th>
@@ -133,6 +138,7 @@
         <thead>
           <tr>
             <th data-key="branch">สาขา</th>
+            <th data-key="region">ภาค</th>
             <th data-key="year_month">เดือน</th>
             <th data-key="direct_sales" class="right">Direct Sale (บาท)</th>
             <th data-key="dealer_sales" class="right">Mobile Dealer รวม (บาท)</th>

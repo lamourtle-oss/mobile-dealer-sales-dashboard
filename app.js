@@ -2,6 +2,7 @@
 
 const state = {
   branch: '',
+  region: '',
   month: '',
   dealerSearch: '',
   tier: 'all',
@@ -24,6 +25,15 @@ async function loadAll() {
   // dealer lookup map
   DATA.dealerMap = {};
   DATA.dealer_profile.forEach(d => DATA.dealerMap[d.dealer_code] = d);
+
+  // branch -> region lookup (derived from branch_month_type, which carries region per branch)
+  DATA.branchRegion = {};
+  DATA.branch_month_type.forEach(r => { if (r.branch && r.region) DATA.branchRegion[r.branch] = r.region; });
+  const regionOf = branch => DATA.branchRegion[branch] || '';
+
+  // attach region to dealer_profile and watchlist rows for filtering/display
+  DATA.dealer_profile.forEach(d => { d.region = regionOf(d.primary_branch); });
+  DATA.watchlist.forEach(w => { w.region = regionOf(w.branch); });
 }
 
 function populateFilters() {
@@ -35,6 +45,14 @@ function populateFilters() {
     branchSel.appendChild(o);
   });
 
+  const regions = [...new Set(DATA.branch_month_type.map(r => r.region).filter(Boolean))].sort();
+  const regionSel = document.getElementById('regionFilter');
+  regions.forEach(rg => {
+    const o = document.createElement('option');
+    o.value = rg; o.textContent = rg;
+    regionSel.appendChild(o);
+  });
+
   const monthSel = document.getElementById('monthFilter');
   DATA.months.forEach(m => {
     const o = document.createElement('option');
@@ -43,6 +61,7 @@ function populateFilters() {
   });
 
   branchSel.addEventListener('change', e => { state.branch = e.target.value; renderAll(); });
+  regionSel.addEventListener('change', e => { state.region = e.target.value; renderAll(); });
   monthSel.addEventListener('change', e => { state.month = e.target.value; renderAll(); });
   document.getElementById('dealerSearch').addEventListener('input', e => { state.dealerSearch = e.target.value.trim().toUpperCase(); renderAll(); });
 
@@ -56,8 +75,8 @@ function populateFilters() {
   });
 
   document.getElementById('resetFilters').addEventListener('click', () => {
-    state.branch = ''; state.month = ''; state.dealerSearch = ''; state.tier = 'all';
-    branchSel.value = ''; monthSel.value = ''; document.getElementById('dealerSearch').value = '';
+    state.branch = ''; state.region = ''; state.month = ''; state.dealerSearch = ''; state.tier = 'all';
+    branchSel.value = ''; regionSel.value = ''; monthSel.value = ''; document.getElementById('dealerSearch').value = '';
     document.querySelectorAll('#tierChips .chip').forEach(c => c.dataset.active = (c.dataset.tier === 'all' ? '1' : '0'));
     renderAll();
   });
@@ -113,9 +132,11 @@ let channelChart, qtyChart;
 
 function renderCharts() {
   let rows = DATA.month_overview;
-  if (state.branch) {
-    // month_overview has no branch dimension; approximate using branch_month_type filtered
-    const filtered = DATA.branch_month_type.filter(r => r.branch === state.branch);
+  if (state.branch || state.region) {
+    // month_overview has no branch/region dimension; approximate using branch_month_type filtered
+    let filtered = DATA.branch_month_type;
+    if (state.branch) filtered = filtered.filter(r => r.branch === state.branch);
+    if (state.region) filtered = filtered.filter(r => r.region === state.region);
     const agg = {};
     filtered.forEach(r => {
       const k = r.year_month + '|' + r.type_sale;
@@ -187,6 +208,7 @@ function renderBranchTable() {
   });
 
   if (state.branch) rows = rows.filter(r => r.branch === state.branch);
+  if (state.region) rows = rows.filter(r => r.region === state.region);
   if (state.month) rows = rows.filter(r => r.year_month === state.month);
   if (state.dealerSearch) rows = rows.filter(r => r.dealer_code.toUpperCase().includes(state.dealerSearch));
   if (state.tier !== 'all') rows = rows.filter(r => r.reliability_tier === state.tier);
@@ -213,6 +235,7 @@ function renderBranchTable() {
 function renderDealerTable() {
   let rows = DATA.dealer_profile;
   if (state.branch) rows = rows.filter(r => r.primary_branch === state.branch);
+  if (state.region) rows = rows.filter(r => r.region === state.region);
   if (state.dealerSearch) rows = rows.filter(r => r.dealer_code.toUpperCase().includes(state.dealerSearch));
   if (state.tier !== 'all') rows = rows.filter(r => r.reliability_tier === state.tier);
   if (state.month) rows = rows.filter(r => r.first_month <= state.month && r.last_month >= state.month);
@@ -226,6 +249,7 @@ function renderDealerTable() {
     <tr>
       <td>${r.dealer_code}</td>
       <td>${r.primary_branch}</td>
+      <td>${r.region || '-'}</td>
       <td class="right">${r.n_branches}</td>
       <td class="right">${fmtMoney(r.total_sales)}</td>
       <td class="right">${fmtNum(r.total_qty)}</td>
@@ -242,6 +266,7 @@ function renderDealerTable() {
 function renderWatchTable() {
   let rows = DATA.watchlist;
   if (state.branch) rows = rows.filter(r => r.branch === state.branch);
+  if (state.region) rows = rows.filter(r => r.region === state.region);
   if (state.month) rows = rows.filter(r => r.year_month === state.month);
   if (state.dealerSearch) rows = rows.filter(r => r.dealer_code.toUpperCase().includes(state.dealerSearch));
   if (state.tier !== 'all') rows = rows.filter(r => r.dealer_tier === state.tier);
@@ -252,6 +277,7 @@ function renderWatchTable() {
   document.getElementById('watchTableBody').innerHTML = rows.map(r => `
     <tr class="anomaly-row">
       <td>${r.branch}</td>
+      <td>${r.region || '-'}</td>
       <td>${r.year_month}</td>
       <td class="right">${fmtMoney(r.direct_sales)}</td>
       <td class="right">${fmtMoney(r.dealer_sales)}</td>
