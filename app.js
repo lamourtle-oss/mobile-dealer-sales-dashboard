@@ -262,11 +262,15 @@ function renderWatchTable() {
     </tr>`).join('');
 }
 
+function safe(fn, label) {
+  try { fn(); } catch (e) { console.error('render error in ' + label, e); }
+}
+
 function renderAll() {
-  renderCharts();
-  renderBranchTable();
-  renderDealerTable();
-  renderWatchTable();
+  safe(renderCharts, 'renderCharts');
+  safe(renderBranchTable, 'renderBranchTable');
+  safe(renderDealerTable, 'renderDealerTable');
+  safe(renderWatchTable, 'renderWatchTable');
 }
 
 (async function init() {
