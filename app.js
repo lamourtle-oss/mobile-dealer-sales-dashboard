@@ -14,6 +14,12 @@ const fmtNum = n => (n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 
 const fmtPct = n => (n === null || n === undefined) ? '-' : n.toFixed(1) + '%';
 const tierClass = t => 'tier-' + (t || '').replace(' ', '');
 const tierEmoji = t => t === 'Reliable' ? '🟢' : t === 'Watch' ? '🟡' : t === 'High Risk' ? '🔴' : '';
+const shopNameHtml = n => n ? n : '<span class="shop-name-na">N/A</span>';
+const statusBadgeHtml = s => {
+  if (!s) return '<span class="status-none">-</span>';
+  const cls = s === 'CLOSED' ? 'status-CLOSED' : s === 'INACTIVE' ? 'status-INACTIVE' : 'status-none';
+  return `<span class="status-badge ${cls}">${s}</span>`;
+};
 
 let DATA = {};
 
@@ -136,20 +142,20 @@ function todayStamp() {
 
 function setupDownloadButtons() {
   document.getElementById('dlBranchTable').addEventListener('click', () => {
-    const headers = ['สาขา', 'ภาค', 'เดือน', 'Dealer Code', 'ยอดขาย (บาท)', 'จำนวน (หน่วย)', 'จำนวนบิล', 'สถานะความน่าเชื่อถือ', 'ประเภท Dealer'];
-    const keys = ['branch', 'region', 'year_month', 'dealer_code', 'sales', 'qty', 'txn', 'reliability_tier', 'tenure_label'];
+    const headers = ['สาขา', 'ภาค', 'เดือน', 'Dealer Code', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'ยอดขาย (บาท)', 'จำนวน (หน่วย)', 'จำนวนบิล', 'สถานะความน่าเชื่อถือ', 'ประเภท Dealer'];
+    const keys = ['branch', 'region', 'year_month', 'dealer_code', 'shop_name', 'dealer_status', 'sales', 'qty', 'txn', 'reliability_tier', 'tenure_label'];
     downloadCSV(`branch_dealer_month_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.branchTable));
   });
 
   document.getElementById('dlDealerTable').addEventListener('click', () => {
-    const headers = ['Dealer Code', 'สาขาหลัก', 'ภาค', 'จำนวนสาขาที่ขาย', 'ยอดขายรวม (บาท)', 'จำนวนรวม (หน่วย)', 'จำนวนบิล', 'เดือนที่ขาย (/15)', '% ยกเลิก', '% ค้างชำระ', 'Risk Score', 'สถานะความน่าเชื่อถือ', 'ประเภท'];
-    const keys = ['dealer_code', 'primary_branch', 'region', 'n_branches', 'total_sales', 'total_qty', 'txn', 'n_months', 'cancel_rate', 'overdue_rate', 'risk_score', 'reliability_tier', 'tenure_label'];
+    const headers = ['Dealer Code', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'สาขาหลัก', 'ภาค', 'จำนวนสาขาที่ขาย', 'ยอดขายรวม (บาท)', 'จำนวนรวม (หน่วย)', 'จำนวนบิล', 'เดือนที่ขาย (/15)', '% ยกเลิก', '% ค้างชำระ', 'Risk Score', 'สถานะความน่าเชื่อถือ', 'ประเภท'];
+    const keys = ['dealer_code', 'shop_name', 'dealer_status', 'primary_branch', 'region', 'n_branches', 'total_sales', 'total_qty', 'txn', 'n_months', 'cancel_rate', 'overdue_rate', 'risk_score', 'reliability_tier', 'tenure_label'];
     downloadCSV(`dealer_profile_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.dealerTable));
   });
 
   document.getElementById('dlWatchTable').addEventListener('click', () => {
-    const headers = ['สาขา', 'ภาค', 'เดือน', 'Direct Sale (บาท)', 'Mobile Dealer รวม (บาท)', 'Dealer เด่นสุดในเดือนนั้น', 'ยอดขาย Dealer นี้ (บาท)', 'Risk Score', 'สถานะ'];
-    const keys = ['branch', 'region', 'year_month', 'direct_sales', 'dealer_sales', 'dealer_code', 'dealer_sales_this_month', 'dealer_risk_score', 'dealer_tier'];
+    const headers = ['สาขา', 'ภาค', 'เดือน', 'Direct Sale (บาท)', 'Mobile Dealer รวม (บาท)', 'Dealer เด่นสุดในเดือนนั้น', 'ชื่อร้าน Dealer', 'สถานะร้าน', 'ยอดขาย Dealer นี้ (บาท)', 'Risk Score', 'สถานะ'];
+    const keys = ['branch', 'region', 'year_month', 'direct_sales', 'dealer_sales', 'dealer_code', 'shop_name', 'dealer_status', 'dealer_sales_this_month', 'dealer_risk_score', 'dealer_tier'];
     downloadCSV(`watchlist_anomaly_${todayStamp()}.csv`, toCSV(headers, keys, lastRows.watchTable));
   });
 }
@@ -177,6 +183,7 @@ function renderKpi() {
     { label: 'จำนวน Mobile Dealer', value: fmtNum(k.n_dealers) + ' ราย', sub: fmtNum(k.n_branches) + ' สาขา' },
     { label: 'Dealer กลุ่ม High Risk', value: fmtNum(DATA.dealer_profile.filter(d => d.reliability_tier === 'High Risk').length) + ' ราย', sub: 'ควรตรวจสอบหน้าร้าน/ตัวตน' },
     { label: 'รายการยอดขายผิดปกติ', value: fmtNum(DATA.watchlist.length) + ' รายการ', sub: 'Direct ต่ำ + Dealer สูง + เสี่ยง' },
+    { label: 'ร้านสถานะ CLOSED (ทางการ)', value: fmtNum(DATA.dealer_profile.filter(d => d.dealer_status === 'CLOSED').length) + ' ราย', sub: 'จากฐานข้อมูล MT_DEALER' },
   ];
   document.getElementById('kpiRow').innerHTML = cards.map(c => `
     <div class="kpi-card">
@@ -261,6 +268,7 @@ function renderBranchTable() {
     return {
       branch: r.branch, region: r.region, year_month: r.year_month,
       dealer_code: r.ARD_SALESMAN_CODE, sales: r.sales, qty: r.qty, txn: r.txn,
+      shop_name: d.shop_name || null, dealer_status: d.dealer_status || '',
       reliability_tier: d.reliability_tier || '-', tenure_label: d.tenure_label || '-'
     };
   });
@@ -283,6 +291,8 @@ function renderBranchTable() {
       <td>${r.region}</td>
       <td>${r.year_month}</td>
       <td>${r.dealer_code}</td>
+      <td>${shopNameHtml(r.shop_name)}</td>
+      <td>${statusBadgeHtml(r.dealer_status)}</td>
       <td class="right">${fmtMoney(r.sales)}</td>
       <td class="right">${fmtNum(r.qty)}</td>
       <td class="right">${fmtNum(r.txn)}</td>
@@ -308,6 +318,8 @@ function renderDealerTable() {
   document.getElementById('dealerTableBody').innerHTML = shown.map(r => `
     <tr>
       <td>${r.dealer_code}</td>
+      <td>${shopNameHtml(r.shop_name)}</td>
+      <td>${statusBadgeHtml(r.dealer_status)}</td>
       <td>${r.primary_branch}</td>
       <td>${r.region || '-'}</td>
       <td class="right">${r.n_branches}</td>
@@ -324,7 +336,10 @@ function renderDealerTable() {
 }
 
 function renderWatchTable() {
-  let rows = DATA.watchlist;
+  let rows = DATA.watchlist.map(r => {
+    const d = DATA.dealerMap[r.dealer_code] || {};
+    return Object.assign({}, r, { shop_name: d.shop_name || null, dealer_status: d.dealer_status || '' });
+  });
   if (state.branch) rows = rows.filter(r => r.branch === state.branch);
   if (state.region) rows = rows.filter(r => r.region === state.region);
   if (state.month) rows = rows.filter(r => r.year_month === state.month);
@@ -343,6 +358,8 @@ function renderWatchTable() {
       <td class="right">${fmtMoney(r.direct_sales)}</td>
       <td class="right">${fmtMoney(r.dealer_sales)}</td>
       <td>${r.dealer_code}</td>
+      <td>${shopNameHtml(r.shop_name)}</td>
+      <td>${statusBadgeHtml(r.dealer_status)}</td>
       <td class="right">${fmtMoney(r.dealer_sales_this_month)}</td>
       <td class="right">${r.dealer_risk_score}</td>
       <td><span class="tier-badge ${tierClass(r.dealer_tier)}">${tierEmoji(r.dealer_tier)} ${r.dealer_tier}</span></td>

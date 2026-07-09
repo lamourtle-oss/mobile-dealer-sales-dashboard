@@ -80,6 +80,8 @@
             <th data-key="region">ภาค</th>
             <th data-key="year_month">เดือน</th>
             <th data-key="dealer_code">Dealer Code</th>
+            <th data-key="shop_name">ชื่อร้าน Dealer</th>
+            <th data-key="dealer_status">สถานะร้าน</th>
             <th data-key="sales" class="right">ยอดขาย (บาท)</th>
             <th data-key="qty" class="right">จำนวน (หน่วย)</th>
             <th data-key="txn" class="right">จำนวนบิล</th>
@@ -101,15 +103,17 @@
   </div>
   <div class="panel">
     <div class="hint">
-      ⚠️ ข้อมูลที่อัปโหลดไม่มีชื่อร้าน/ที่อยู่จริงของ Mobile Dealer (มีแค่รหัส เช่น SR100511) จึงไม่สามารถค้นหน้าร้านจริงบนอินเทอร์เน็ตได้โดยตรง
-      คะแนน <b>ความน่าเชื่อถือ</b> ด้านล่างจึงคำนวณจากสัญญาณภายในระบบแทน ได้แก่ อัตรายกเลิกรายการ (cancel rate), อัตราค้างชำระ/เกินกำหนด (overdue),
-      และอัตรา Gross Margin ติดลบ — ยิ่งคะแนนสูง ยิ่งมีความเสี่ยง/น่าสงสัยว่าอาจไม่มีหน้าร้านที่มั่นคง ควรให้ทีมตรวจสอบเพิ่มเติมเป็นรายกรณี
+      ชื่อร้าน Dealer จับคู่จากทะเบียนสมัคร Dealer (Dealer Mobile.xlsx), ไฟล์ยืมสต๊อก (DealerBorrow) และฐานข้อมูลร้านค้า (MT_DEALER) — ครอบคลุม 99.2% ของ Dealer ทั้งหมด
+      คอลัมน์ <b>สถานะร้าน</b> คือสถานะทางการจาก MT_DEALER (เช่น CLOSED = ปิดกิจการแล้ว) ส่วนคะแนน <b>ความน่าเชื่อถือ</b> คำนวณจากสัญญาณภายในระบบขาย ได้แก่ อัตรายกเลิกรายการ (cancel rate), อัตราค้างชำระ/เกินกำหนด (overdue),
+      และอัตรา Gross Margin ติดลบ — ยิ่งคะแนนสูง ยิ่งมีความเสี่ยง ควรให้ทีมตรวจสอบเพิ่มเติมเป็นรายกรณี (หมายเหตุ: สถานะร้าน CLOSED บางรายยังไม่สะท้อนในคะแนนความเสี่ยงนี้ เพราะคำนวณจากพฤติกรรมการขาย ไม่ใช่สถานะร้าน)
     </div>
     <div class="table-wrap" style="margin-top:10px;">
       <table id="dealerTable">
         <thead>
           <tr>
             <th data-key="dealer_code">Dealer Code</th>
+            <th data-key="shop_name">ชื่อร้าน Dealer</th>
+            <th data-key="dealer_status">สถานะร้าน</th>
             <th data-key="primary_branch">สาขาหลัก</th>
             <th data-key="region">ภาค</th>
             <th data-key="n_branches" class="right">จำนวนสาขาที่ขาย</th>
@@ -152,6 +156,8 @@
             <th data-key="direct_sales" class="right">Direct Sale (บาท)</th>
             <th data-key="dealer_sales" class="right">Mobile Dealer รวม (บาท)</th>
             <th data-key="dealer_code">Dealer เด่นสุดในเดือนนั้น</th>
+            <th data-key="shop_name">ชื่อร้าน Dealer</th>
+            <th data-key="dealer_status">สถานะร้าน</th>
             <th data-key="dealer_sales_this_month" class="right">ยอดขาย Dealer นี้ (บาท)</th>
             <th data-key="dealer_risk_score" class="right">Risk Score</th>
             <th data-key="dealer_tier">สถานะ</th>
